@@ -7,12 +7,13 @@
 #define MY_UUID { 0x6F, 0xC5, 0x2E, 0xDD, 0xF7, 0x0E, 0x44, 0xA5, 0xA4, 0x6C, 0x3C, 0x7D, 0x40, 0x1B, 0x7B, 0x0E }
 PBL_APP_INFO(MY_UUID,
              "Golf POC", "magic7s",
-             1, 0, /* App version */
+             1, 1, /* App version */
              DEFAULT_MENU_ICON,
              APP_INFO_STANDARD_APP);
 
 Window window;
 Window finalscore;
+Window distances;
 Layer holepar;
 TextLayer holepar_hole;
 TextLayer holepar_hole_num;
@@ -25,6 +26,7 @@ TextLayer shots_total;
 TextLayer club;
 TextLayer finalscore_score;
 TextLayer finalscore_putts;
+TextLayer distances_listall;
 
 AppTimerHandle timer_handle;
 #define COOKIE_MY_TIMER 1
@@ -72,6 +74,14 @@ static char s_holenum[18][3] = {
 "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18"
 };
 
+struct shot_record {
+	int holenum;
+	int clubindex;
+	char gpsloc[25]; /* Not sure what format this will be. */
+} list_of_shots[150]; /* MAX 150 shots per round */
+
+static int shotnum_index = 0;
+
 
 void end_round() {
     round_started = false;
@@ -98,6 +108,7 @@ void end_round() {
 	layer_add_child(&finalscore.layer, &finalscore_putts.layer);
 	
 	vibes_double_pulse();
+	// Need to destroy list_of_shots array.
 	
 }
 
@@ -119,6 +130,9 @@ void update_total() {
 
 void save_clubinfo() {
 	// Save Club and location information to phone.
+	list_of_shots[shotnum_index].holenum = holenum_index + 1;
+	list_of_shots[shotnum_index].clubindex = club_menu_index;
+	shotnum_index++;
 }
 
 void update_shot() {
@@ -147,6 +161,21 @@ void start_new_round() {
 	round_start_hour = roundstarttime.tm_hour;
 	round_start_minute = roundstarttime.tm_min;
     
+}
+
+void show_all_distances () {
+	window_init(&distances, "All Distances");
+	window_stack_push(&distances, true /* Animated */);
+	text_layer_init(&distances_listall, GRect(0, 0, 144, 168-16));
+	text_layer_set_background_color(&distances_listall, GColorWhite);
+	text_layer_set_text_color(&distances_listall, GColorBlack);
+	text_layer_set_font(&distances_listall,fonts_get_system_font(FONT_KEY_GOTHIC_24));
+	text_layer_set_text(&distances_listall, "340 - Green\n208 - Left Bunker\n140 - Right Water");
+	text_layer_set_text_alignment(&distances_listall, GTextAlignmentCenter);
+	layer_add_child(&distances.layer, &distances_listall.layer);
+	
+
+
 }
 
 
@@ -221,6 +250,9 @@ void select_single_click_handler(ClickRecognizerRef recognizer, Window *window) 
 void select_long_click_handler(ClickRecognizerRef recognizer, Window *window) {
   (void)recognizer;
   (void)window;
+  if (round_started) {
+  	show_all_distances();
+  }
 }
 
 void click_config_provider(ClickConfig **config, Window *window) {
